@@ -1,0 +1,29 @@
+{
+  "name": "imagemeta",
+  "version": "1.0.0",
+  "description": "Utility to edit metadata (e.g. licensing/copyright info) for images",
+  "bin": "dist/index.js",
+  "main": "dist/index",
+  "scripts": {
+    "build": "npx tsc -p .",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "watch": "npx tsc -w & nodemon -q -w dist"
+  },
+  "keywords": [],
+  "author": "SIL International",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^11.0.0",
+    "exiftool-vendored": "^22.2.3",
+    "globby": "^13.2.2",
+    "path": "^0.12.7"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.16",
+    "@typescript-eslint/eslint-plugin": "^5.46.1",
+    "@typescript-eslint/parser": "^5.46.1",
+    "nodemon": "^3.0.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
+  }
+}

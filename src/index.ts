@@ -12,22 +12,22 @@ import * as meta from './meta.js';
 ////////////////////////////////////////////////////////////////////
 program
   //.version(version, '-v, --vers', 'output the current version')
-  .description("Utilities to edit licensing/copyright info for images. ")
+  .description("Utilities to view/edit metadata info for images (jpg's or png's). If --tags not given, metadata is read")
     .option("-f, --file <path to single image file>", "path to an image file")
-    .option("-c, --copyright <copyright info>", "String to put in copyright field")
+    .option("-t, --tags <JSON Object of metadata tags to write>", "If specified, metadata tags to write to file/project")
     .option("-p, --projectPath <path>", "path to project containing images")
   .parse(process.argv);
 
 // Debugging parameters
 const options = program.opts();
-const debugMode = true;
+const debugMode = false;
 if (debugMode) {
   console.log('Parameters:');
   if (options.file) {
     console.log(`Image file path: "${options.file}"`);
   }
-  if (options.copyright) {
-    console.log(`Copyright info: "${options.copyright}"`);
+  if (options.tags) {
+    console.log(`Tag info: "${options.tags}"`);
   }
   if (options.projectPath) {
     console.log(`Project path: "${options.projectPath}`);
@@ -40,14 +40,7 @@ if (debugMode) {
   console.log('\n');
 }
 
-// Project Name required
-/*if (!options.projectName) {
-  console.error("Project name required");
-  process.exit(1);
-}
-*/
-
-// Check if txt/JSON file or directory exists
+// Check if image file or project directory exists
 if (options.file && !fs.existsSync(options.file)) {
   console.error("Can't open image " + options.file);
   process.exit(1);
@@ -58,8 +51,8 @@ if (options.projectPath && !fs.existsSync(options.projectPath)) {
 }
 
 // Validate one of the optional parameters is given
-if (!options.file && !options.copyright && !options.projectPath) {
-  console.error("Need to pass another optional parameter [-f -c or -p]");
+if (!options.file && !options.tags && !options.projectPath) {
+  console.error("Need to pass another optional parameter [-f -t or -p]");
   process.exit(1);
 }
 
@@ -68,20 +61,30 @@ if (!options.file && !options.copyright && !options.projectPath) {
 ////////////////////////////////////////////////////////////////////
 
 if (options.file) {
+  if (options.tags) {
+    // Write tags
+    console.log(`Writing tag info: ${options.tags}`);
+    await meta.writeTags(options.file, options.tags);
+  }
+
   // Read tags
-  const tags = await meta.readTags(options.file); 
-} else if (options.copyright) {
-  // Modify image metadata
-  
-  
+  const tags = await meta.readTags(options.file);
+
 } else if (options.projectPath) {
   console.log('searching for images in project')
-  // Do something with all the images in a project
+
+  // Read/Write tags for all the images in a project (Do we limit to LinkedFiles/Pictures?)
   const images = glob.sync(options.projectPath + '**/*.{jpg,JPG,png,PNG}');
   for (const file of images) {
+    if (options.tags) {
+      // Write tags
+      console.log(`Writing tag info: ${options.tags}`);
+      await meta.writeTags(file, options.tags);
+    }
+
     // Read tags
     const tags = await meta.readTags(file);
-  }; 
+  };
 }
 
 console.log('All done processing');

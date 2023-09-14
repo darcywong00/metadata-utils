@@ -1,16 +1,17 @@
 #!/usr/bin/env node
 // Copyright 2023 SIL International
-const exiftool = require('exiftool-vendored').exiftool;
-const {program} = require('commander');
+import {program} from 'commander';
+import {exiftool, parseJSON} from 'exiftool-vendored';
 import * as fs from 'fs';
-import {globby} from 'globby';
-const {version} = require('../package.json');
+import {glob} from 'glob';
+import * as meta from './meta.js';
+//import {version} from '../package.json';
 
 ////////////////////////////////////////////////////////////////////
 // Get parameters
 ////////////////////////////////////////////////////////////////////
 program
-  .version(version, '-v, --vers', 'output the current version')
+  //.version(version, '-v, --vers', 'output the current version')
   .description("Utilities to edit licensing/copyright info for images. ")
     .option("-f, --file <path to single image file>", "path to an image file")
     .option("-c, --copyright <copyright info>", "String to put in copyright field")
@@ -68,39 +69,19 @@ if (!options.file && !options.copyright && !options.projectPath) {
 
 if (options.file) {
   // Read tags
-  exiftool
-    .read(options.file)
-    .then((tags) =>
-      console.log(
-        `Image ${tags.FileName} has Artist: ${tags.Artist}, Copyright: ${tags.Copyright}, File Modify Date: ${tags.FileModifyDate}, Errors: ${tags.errors}`
-      )
-    )
-    .catch((err) => console.error("Something terrible happened: ", err));
-  
+  const tags = await meta.readTags(options.file); 
 } else if (options.copyright) {
   // Modify image metadata
   
   
 } else if (options.projectPath) {
+  console.log('searching for images in project')
   // Do something with all the images in a project
-  (async () => {
-    const paths = await globby(options.projectPath, {
-      expandDirectories: {
-        extensions: ['jpg', 'JPG', 'png', 'PNG']
-      }
-    });
-    paths.forEach(file => {
-      // Read tags
-      exiftool
-        .read(file)
-        .then((tags) =>
-          console.log(
-            `Image ${tags.FileName} has Artist: ${tags.Artist}, Copyright: ${tags.Copyright}, File Modify Date: ${tags.FileModifyDate}, Errors: ${tags.errors}`
-          )
-        )
-        .catch((err) => console.error("Something terrible happened: ", err));
-    });
-  });
+  const images = glob.sync(options.projectPath + '**/*.{jpg,JPG,png,PNG}');
+  for (const file of images) {
+    // Read tags
+    const tags = await meta.readTags(file);
+  }; 
 }
 
 console.log('All done processing');
@@ -108,4 +89,4 @@ console.log('All done processing');
 // Processor functions
 ////////////////////////////////////////////////////////////////////
 
-//process.exit(1);
+exiftool.end();

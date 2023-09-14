@@ -1,6 +1,7 @@
 {
   "name": "imagemeta",
   "version": "1.0.0",
+  "type": "module",
   "description": "Utility to edit metadata (e.g. licensing/copyright info) for images",
   "bin": "dist/index.js",
   "main": "dist/index",
@@ -14,8 +15,8 @@
   "license": "MIT",
   "dependencies": {
     "commander": "^11.0.0",
-    "exiftool-vendored": "^22.2.3",
-    "globby": "^13.2.2",
+    "exiftool-vendored": "^23.0.0",
+    "glob": "^10.3.4",
     "path": "^0.12.7"
   },
   "devDependencies": {

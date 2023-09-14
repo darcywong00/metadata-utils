@@ -15,7 +15,7 @@
       ],
       "args": [
         //"-f", "./samples/mon.png",
-        "-p", "./samples/"
+        "-p", "./samples"
       ]
     },
     {

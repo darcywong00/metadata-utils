@@ -5,6 +5,7 @@ import {exiftool, parseJSON} from 'exiftool-vendored';
 import * as fs from 'fs';
 import {glob} from 'glob';
 import * as meta from './meta.js';
+import promptSync from 'prompt-sync';
 //import {version} from '../package.json';
 
 ////////////////////////////////////////////////////////////////////
@@ -72,6 +73,16 @@ if (options.file) {
 
 } else if (options.projectPath) {
   console.log('searching for images in project')
+
+  // Confirm if user wants to modify metadata for all the files in the project. Doesn't work in VS Code
+  /*
+  const prompt = promptSync();
+  let confirmation = prompt("Are you sure you want to modify the metadata for all the images in the project? (y/n) ");
+  confirmation = String(confirmation);
+  if (confirmation.toLowerCase() === 'n') {
+    process.exit(1);
+  }
+  */
 
   // Read/Write tags for all the images in a project (Do we limit to LinkedFiles/Pictures?)
   const images = glob.sync(options.projectPath + '**/*.{jpg,JPG,png,PNG}');

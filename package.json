@@ -18,7 +18,8 @@
     "commander": "^11.0.0",
     "exiftool-vendored": "^23.0.0",
     "glob": "^10.3.4",
-    "path": "^0.12.7"
+    "path": "^0.12.7",
+    "prompt-sync": "^4.2.0"
   },
   "devDependencies": {
     "@types/node": "^18.11.16",

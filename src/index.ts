@@ -64,7 +64,9 @@ if (!options.file && !options.tags && !options.projectPath) {
 if (options.file) {
   if (options.tags) {
     // Write tags
-    console.log(`Writing tag info: ${options.tags}`);
+    if (debugMode) {
+      console.log(`Writing tag info: ${options.tags}`);
+    }
     await meta.writeTags(options.file, options.tags);
   }
 

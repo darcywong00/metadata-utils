@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import {exiftool, parseJSON, Tags} from 'exiftool-vendored';
 import path from 'path';
 
-export default {readTags, writeTags};
+export default {readImageTags, writeImageTags};
 
 chalk.level = 1; // Use colors in the VS Code Debug Window
 
@@ -14,17 +14,10 @@ chalk.level = 1; // Use colors in the VS Code Debug Window
  * @param file {string} - path to image file
  * @returns Promise<Tags> - tags in JSON format
  */
-export async function readTags(file: string) : Promise<Tags> {
+export async function readImageTags(file: string) : Promise<Tags> {
   const tags = await exiftool.readRaw(file);
   const str: string = JSON.stringify(tags);
   const tags2: Tags = parseJSON(str) as Tags;
-
-  const tagInfo = `Image file ${tags2.FileName} has Author: ${tags2.Author}, Copyright: ${tags.Copyright}, File Modify Date: ${tags2.FileModifyDate}`;
-  if (!tags2.Copyright) {
-    console.log(chalk.red(tagInfo));
-  } else {
-    console.log(chalk.green(tagInfo));
-  }
   return tags2;
 }
 
@@ -34,23 +27,31 @@ export async function readTags(file: string) : Promise<Tags> {
  * @param file {string} - path to image file
  * @param tags {string} - metadata to write as a JSON string
  */
-export async function writeTags(file: string, tags: any) {
-  const currentTags = await exiftool.readRaw(file);
+export async function writeImageTags(file: string, tags: any) {
+  const currentTags = await readImageTags(file);
 
   const tags2 = parseJSON(tags) as Tags;
-  // Update copyright info
-  if (tags2.Author) {
-    try {
-      await exiftool.write(file,
-        {Author: tags2.Author});
-    } catch (err: any) {
-      console.error("ERROR:", err.message);
+  // Update Author info
+  if (tags2.hasOwnProperty('Author')) {
+    if (tags2.Author) {
+      if (currentTags.Author != tags2.Author) {
+        const warning = `WARNING: Overwriting ${path.basename(file)} existing author: ${currentTags.Author} with ${tags2.Author}`;
+        console.log(chalk.red(warning));
+      }
+
+      try {
+        await exiftool.write(file,
+          {Author: tags2.Author});
+      } catch (err: any) {
+        console.error("ERROR:", err.message);
+      }
     }
   }
 
+  // Update Copyright info
   if (tags2.hasOwnProperty('Copyright')) {
-    if (currentTags.Copyright) {
-      const warning = `WARNING: Overwriting ${path.basename(file)} existing copyright: ${currentTags.Copyright}`;
+    if (currentTags.Copyright != tags2.Copyright) {
+      const warning = `WARNING: Overwriting ${path.basename(file)} existing copyright: ${currentTags.Copyright} with ${tags2.Copyright}`;
       console.log(chalk.red(warning));
     }
 
@@ -63,7 +64,6 @@ export async function writeTags(file: string, tags: any) {
       console.error("ERROR:", err.message);
     }
   }
-  // Update dates UTC!
 
-
+  // Update modify dates UTC?
 }

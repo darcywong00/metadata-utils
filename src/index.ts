@@ -1,12 +1,24 @@
 #!/usr/bin/env node
 // Copyright 2023 SIL International
+import chalk from 'chalk';
 import {program} from 'commander';
-import {exiftool, parseJSON} from 'exiftool-vendored';
+import {exiftool, Tags} from 'exiftool-vendored';
 import * as fs from 'fs';
 import {glob} from 'glob';
 import * as meta from './meta.js';
+import path from 'path';
 import promptSync from 'prompt-sync';
+
 //import {version} from '../package.json';
+
+type fileType =
+  "audio" | "image";
+
+interface linkedFileType {
+  fileName: string;
+  fileType: fileType;
+  tags: Tags;
+}
 
 ////////////////////////////////////////////////////////////////////
 // Get parameters
@@ -60,6 +72,7 @@ if (!options.file && !options.tags && !options.projectPath) {
 ////////////////////////////////////////////////////////////////////
 // Routing commands to functions
 ////////////////////////////////////////////////////////////////////
+let linkedFiles: linkedFileType[] = [];
 
 if (options.file) {
   if (options.tags) {
@@ -67,11 +80,16 @@ if (options.file) {
     if (debugMode) {
       console.log(`Writing tag info: ${options.tags}`);
     }
-    await meta.writeTags(options.file, options.tags);
+    await meta.writeImageTags(options.file, options.tags);
   }
 
   // Read tags
-  const tags = await meta.readTags(options.file);
+  const tags = await meta.readImageTags(options.file);
+  linkedFiles.push({
+    fileName: path.basename(options.file),
+    fileType: "image",
+    tags: tags
+  });
 
 } else if (options.projectPath) {
   console.log('searching for images in project')
@@ -92,13 +110,33 @@ if (options.file) {
     if (options.tags) {
       // Write tags
       console.log(`Writing tag info: ${options.tags}`);
-      await meta.writeTags(file, options.tags);
+      await meta.writeImageTags(file, options.tags);
     }
 
     // Read tags
-    const tags = await meta.readTags(file);
+    const tags = await meta.readImageTags(file);
+    linkedFiles.push({
+      fileName: path.basename(file),
+      fileType: "image",
+      tags: tags
+    });
   };
 }
+
+// Generate summary
+console.log(chalk.blue('\n------------------------'));
+console.log(chalk.blue('Licensing Info Summary:'));
+linkedFiles.forEach(linkedFile => {
+  const tagInfo = `${linkedFile.fileType} file ${linkedFile.fileName} has\n\tAuthor: ${linkedFile.tags.Author}` +
+    `\n\tCopyright: ${linkedFile.tags.Copyright}\n\tFile Modify Date: ${linkedFile.tags.FileModifyDate}\n`;
+  if (!linkedFile.tags.Copyright) {
+    console.log(chalk.red(tagInfo));
+  } else {
+    console.log(chalk.green(tagInfo));
+  }
+
+})
+
 
 console.log('All done processing');
 ////////////////////////////////////////////////////////////////////

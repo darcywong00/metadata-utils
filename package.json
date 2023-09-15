@@ -1,8 +1,8 @@
 {
-  "name": "imagemeta",
+  "name": "metadatautils",
   "version": "1.0.0",
   "type": "module",
-  "description": "Utility to edit metadata (e.g. licensing/copyright info) for images",
+  "description": "Utilities to read/write metadata (e.g. licensing/copyright info) for images/audio files",
   "bin": "dist/index.js",
   "main": "dist/index",
   "scripts": {

@@ -17,9 +17,9 @@ import promptSync from 'prompt-sync';
 program
   //.version(version, '-v, --vers', 'output the current version')
   .description("Utilities to read/write metadata info for images (jpg's or png's). If --tags not given, metadata is read")
-    .option("-f, --file <path to single image file>", "path to an image file")
+    .option("-f, --files <path to image files...>", "path to image files")
     .option("-t, --tags <JSON Object of metadata tags to write>", "If specified, metadata tags to write to file/project")
-    .option("-p, --projectPath <path>", "path to project containing images. If not specified, the project path is assumed to be current directory")
+    .option("-p, --projectPath <path>", "path to project containing metadata files. If not specified, the project path is assumed to be current directory")
   .parse(process.argv);
 
 // Debugging parameters
@@ -44,10 +44,15 @@ if (debugMode) {
   console.log('\n');
 }
 
-// Check if image file or project directory exists
-if (options.file && !fs.existsSync(options.file)) {
-  console.error("Can't open image " + options.file);
-  process.exit(1);
+// Check if image files or project directory exists
+if (options.files) {
+
+  options.files.forEach(file => {
+    if (!fs.existsSync(file)) {
+      console.error(`${file} does not exist`);
+      process.exit(1);
+    }
+  });
 }
 if (options.projectPath && !fs.existsSync(options.projectPath)) {
   console.error("Can't open project directory " + options.projectPath);
@@ -59,23 +64,24 @@ if (options.projectPath && !fs.existsSync(options.projectPath)) {
 ////////////////////////////////////////////////////////////////////
 let linkedFiles: meta.linkedFileType[] = [];
 
-if (options.file) {
-  if (options.tags) {
-    // Write tags
-    if (debugMode) {
-      console.log(`Writing tag info: ${options.tags}`);
+if (options.files) {
+  for (const file of options.files) {
+    if (options.tags) {
+      // Write tags
+      if (debugMode) {
+        console.log(`Writing tag info: ${options.tags}`);
+      }
+      await meta.writeImageTags(file, options.tags);
     }
-    await meta.writeImageTags(options.file, options.tags);
+
+    // Read tags
+    const tags = await meta.readImageTags(file);
+    linkedFiles.push({
+      fileName: path.basename(file),
+      fileType: "image",
+      tags: tags
+    });
   }
-
-  // Read tags
-  const tags = await meta.readImageTags(options.file);
-  linkedFiles.push({
-    fileName: path.basename(options.file),
-    fileType: "image",
-    tags: tags
-  });
-
 } else {
   const projectPath = options.projectPath ? options.projectPath : process.cwd();
   console.log(`searching for images in project ${projectPath}`);

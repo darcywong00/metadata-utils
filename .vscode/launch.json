@@ -14,9 +14,9 @@
         "${workspaceFolder}/dist/**.js"
       ],
       "args": [
-        //"-f", "./samples/test.PNG",
-        "-t", "{\"Author\": \"Darcy\", \"Copyright\": \"2023 Darcy\", \"Comment\": \"Blah\"}",
-        "-p", "./samples"
+        "-f", "./samples/test.PNG", "./samples/mon.png",
+        //"-t", "{\"Author\": \"Darcy\", \"Copyright\": \"2023 Darcy\", \"Comment\": \"Blah\"}",
+        //"-p", "./samples"
       ]
     },
     {

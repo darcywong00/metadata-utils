@@ -4,6 +4,15 @@ import path from 'path';
 
 export default {readImageTags, writeImageTags};
 
+export type fileType =
+  "audio" | "image";
+
+export interface linkedFileType {
+  fileName: string;
+  fileType: fileType;
+  tags: Tags;
+}
+
 chalk.level = 1; // Use colors in the VS Code Debug Window
 
 // Utilities to read and write metadata tags from an image file.

@@ -11,24 +11,15 @@ import promptSync from 'prompt-sync';
 
 //import {version} from '../package.json';
 
-type fileType =
-  "audio" | "image";
-
-interface linkedFileType {
-  fileName: string;
-  fileType: fileType;
-  tags: Tags;
-}
-
 ////////////////////////////////////////////////////////////////////
 // Get parameters
 ////////////////////////////////////////////////////////////////////
 program
   //.version(version, '-v, --vers', 'output the current version')
-  .description("Utilities to view/edit metadata info for images (jpg's or png's). If --tags not given, metadata is read")
+  .description("Utilities to read/write metadata info for images (jpg's or png's). If --tags not given, metadata is read")
     .option("-f, --file <path to single image file>", "path to an image file")
     .option("-t, --tags <JSON Object of metadata tags to write>", "If specified, metadata tags to write to file/project")
-    .option("-p, --projectPath <path>", "path to project containing images")
+    .option("-p, --projectPath <path>", "path to project containing images. If not specified, the project path is assumed to be current directory")
   .parse(process.argv);
 
 // Debugging parameters
@@ -63,16 +54,10 @@ if (options.projectPath && !fs.existsSync(options.projectPath)) {
   process.exit(1);
 }
 
-// Validate one of the optional parameters is given
-if (!options.file && !options.tags && !options.projectPath) {
-  console.error("Need to pass another optional parameter [-f -t or -p]");
-  process.exit(1);
-}
-
 ////////////////////////////////////////////////////////////////////
 // Routing commands to functions
 ////////////////////////////////////////////////////////////////////
-let linkedFiles: linkedFileType[] = [];
+let linkedFiles: meta.linkedFileType[] = [];
 
 if (options.file) {
   if (options.tags) {
@@ -91,8 +76,9 @@ if (options.file) {
     tags: tags
   });
 
-} else if (options.projectPath) {
-  console.log('searching for images in project')
+} else {
+  const projectPath = options.projectPath ? options.projectPath : process.cwd();
+  console.log(`searching for images in project ${projectPath}`);
 
   // Confirm if user wants to modify metadata for all the files in the project. Doesn't work in VS Code
   /*
@@ -105,7 +91,7 @@ if (options.file) {
   */
 
   // Read/Write tags for all the images in a project (Do we limit to LinkedFiles/Pictures?)
-  const images = glob.sync(options.projectPath + '**/*.{jpg,JPG,png,PNG}');
+  const images = glob.sync(projectPath + '/**/*.{jpg,JPG,png,PNG}');
   for (const file of images) {
     if (options.tags) {
       // Write tags
@@ -136,7 +122,6 @@ linkedFiles.forEach(linkedFile => {
   }
 
 })
-
 
 console.log('All done processing');
 ////////////////////////////////////////////////////////////////////

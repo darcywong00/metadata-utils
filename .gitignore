@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Sample files for testing
+samples/
+
+# Compiled Output files
+dist/
+
+# Published artifacts
+deploy/
+log.json
+
+# Output
+*.SFM

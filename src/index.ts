@@ -96,8 +96,14 @@ if (options.files) {
     // Read tags
     const tags = await meta.readImageTags(file);
     linkedFiles.push({
-      fileName: path.basename(file),
+      fileName: path.basename(tags.SourceFile),
       fileType: "image",
+
+      sourceFile: tags.SourceFile,
+      creator: tags.Creator,
+      license: tags.License,
+      rights: tags.Rights,
+
       tags: tags
     });
   }
@@ -127,13 +133,15 @@ if (options.files) {
     // Read tags
     const tags = await meta.readImageTags(file);
     linkedFiles.push({
-      fileName: path.basename(file),
+      fileName: path.basename(tags.SourceFile),
       fileType: "image",
-      path: tags.SourceFile,
-      author: tags.Author,
-      copyright: tags.Copyright,
-      modifyDate: tags.FileModifyDate,
-      //tags: tags
+
+      sourceFile: tags.SourceFile,
+      creator: tags.Creator,
+      license: tags.License,
+      rights: tags.Rights,
+
+      tags: tags
     });
   };
 }
@@ -142,9 +150,11 @@ if (options.files) {
 console.log(chalk.blue('\n------------------------'));
 console.log(chalk.blue('Licensing Info Summary:'));
 linkedFiles.forEach(linkedFile => {
-  const tagInfo = `${linkedFile.fileType} file ${linkedFile.fileName} has\n\tAuthor: ${linkedFile.author}` +
-    `\n\tCopyright: ${linkedFile.copyright}\n\tFile Modify Date: ${linkedFile.modifyDate}\n`;
-  if (!linkedFile.copyright) {
+  const tagInfo = `${linkedFile.fileType} file ${linkedFile.fileName} has\n\t` +
+    `Creator: ${linkedFile.creator}\n\t` +
+    `License: ${linkedFile.license}\n\t` +
+    `Rights: ${linkedFile.rights}\n`;
+  if (!linkedFile.license) {
     console.log(chalk.red(tagInfo));
   } else {
     console.log(chalk.green(tagInfo));

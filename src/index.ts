@@ -7,6 +7,7 @@ import {exiftool, parseJSON, Tags} from 'exiftool-vendored';
 import * as fs from 'fs';
 import {glob} from 'glob';
 import * as meta from './meta.js';
+import require from './cjs-require.js';
 import path from 'path';
 import promptSync from 'prompt-sync';
 
@@ -19,6 +20,7 @@ program
   //.version(version, '-v, --vers', 'output the current version')
   .description("Utilities to read/write metadata info for images (jpg's or png's). If --tags not given, metadata is read")
   .option("-f, --files <path to image files...>", "path to image files")
+  .option("-j, --json <path to JSON Object of metadata tags to write>", "If specified, metadata tags to write to file(s)/project")
   .option("-t, --tags <JSON Object of metadata tags to write>", "If specified, metadata tags to write to file/project")
   .option("-p, --projectPath <path>", "path to project containing metadata files. If not specified, the project path is assumed to be current directory")
   .exitOverride();
@@ -47,6 +49,9 @@ function validateParameters(options) {
     if (options.file) {
       console.log(`Image file path: "${options.file}"`);
     }
+    if (options.json) {
+      console.log(`Tag info: "${options.json}"`);
+    }
     if (options.tags) {
       console.log(`Tag info: "${options.tags}"`);
     }
@@ -72,6 +77,11 @@ function validateParameters(options) {
     });
   }
 
+  if (options.json && !fs.existsSync(options.json)) {
+    console.error(`Can't open JSON file ${options.json}. Exiting`);
+    process.exit(1);
+  }
+
   if (options.projectPath && !fs.existsSync(options.projectPath)) {
     console.error(`Can't open project directory ${options.projectPath}. Exiting`);
     process.exit(1);
@@ -81,93 +91,59 @@ function validateParameters(options) {
   if (!options.files && !options.projectPath) {
     console.error(`--files or --projectPath parameter required. Exiting`);
     process.exit(1);
+  }
+
+  // Conflict if both tags and json parameter provided
+  if (options.tags && options.json) {
+    console.error(`Cannot provide --tags and --json parameter. Exiting`);
+    process.exit(1);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////
 // Routing commands to functions
 ////////////////////////////////////////////////////////////////////
 let linkedFiles: meta.linkedFileType[] = [];
+let newTags;
+if (options.tags || options.json) {
+  newTags = (options.tags) ? parseJSON(options.tags) as any : require(options.json);
+}
 
 if (options.files) {
-  const allTags = await Promise.all(meta.getTags(options.files));
-  allTags.forEach(rawTags => {
-    const str: string = JSON.stringify(rawTags);
-    const tags: any = parseJSON(str) as any;
-    linkedFiles.push({
-      fileName: path.basename(tags.SourceFile),
-      fileType: "image",
-
-      sourceFile: tags.SourceFile,
-      creator: tags.Creator,
-      license: tags.License,
-      rights: tags.Rights,
-
-      tags: tags
-    })
-  })
-  /*
-  for (const file of options.files) {
-    if (options.tags) {
-      // Write tags
-      if (debugMode) {
-        console.log(`Writing tag info: ${options.tags}`);
-      }
-      await meta.writeImageTags(file, options.tags);
-    }
-
-    // Read tags
-    const tags = await meta.readImageTags(file);
-    linkedFiles.push({
-      fileName: path.basename(tags.SourceFile),
-      fileType: "image",
-
-      sourceFile: tags.SourceFile,
-      creator: tags.Creator,
-      license: tags.License,
-      rights: tags.Rights,
-
-      tags: tags
-    });
+  // Overwrite metadata tags
+  if (newTags) {
+    await meta.writeImageTags(options.files, newTags);
   }
-  */
+
+  // Read tags
+  linkedFiles = await meta.getTags(options.files);
 
 } else {
   const projectPath = options.projectPath ? options.projectPath : process.cwd();
   console.log(`searching for images in project ${projectPath}`);
 
-  // Confirm if user wants to modify metadata for all the files in the project. Doesn't work in VS Code
-  /*
-  const prompt = promptSync();
-  let confirmation = prompt("Are you sure you want to modify the metadata for all the images in the project? (y/n) ");
-  confirmation = String(confirmation);
-  if (confirmation.toLowerCase() === 'n') {
-    process.exit(1);
-  }
-  */
-
   // Read/Write tags for all the images in a project (Do we limit to LinkedFiles/Pictures?)
-  const images = glob.sync(projectPath + '/**/*.{jpg,JPG,png,PNG}');
-  for (const file of images) {
-    if (options.tags) {
-      // Write tags
-      console.log(`Writing tag info: ${options.tags}`);
-      await meta.writeImageTags(file, options.tags);
+  const files = glob.sync(projectPath + '/**/*.{jpg,JPG,png,PNG}');
+
+  if (newTags) {
+    // Confirm if user wants to modify metadata for all the files in the project.
+    console.log(`New tags to write are: ` +
+      JSON.stringify(newTags, (k, v) => v === undefined ? null : v, 2));
+    const prompt = promptSync();
+    let confirmation = prompt("Are you sure you want to modify the metadata for all the images in the project? (y/n) ");
+    confirmation = String(confirmation);
+    if (confirmation.toLowerCase() === 'n') {
+      process.exit(1);
     }
 
-    // Read tags
-    const tags = await meta.readImageTags(file);
-    linkedFiles.push({
-      fileName: path.basename(tags.SourceFile),
-      fileType: "image",
+    // Write tags
+    console.log(`Writing tag info: ${options.tags}`);
+    await meta.writeImageTags(files, newTags);
 
-      sourceFile: tags.SourceFile,
-      creator: tags.Creator,
-      license: tags.License,
-      rights: tags.Rights,
+  }
 
-      tags: tags
-    });
-  };
+  // Read tags
+  linkedFiles = await meta.getTags(files);
 }
 
 // Generate summary
@@ -175,6 +151,8 @@ console.log(chalk.blue('\n------------------------'));
 console.log(chalk.blue('Licensing Info Summary:'));
 linkedFiles.forEach(linkedFile => {
   const tagInfo = `${linkedFile.fileType} file ${linkedFile.fileName} has\n\t` +
+    `Source File: ${linkedFile.sourceFile}\n\t` +
+    `File Type: ${linkedFile.fileType}\n\t` +
     `Creator: ${linkedFile.creator}\n\t` +
     `License: ${linkedFile.license}\n\t` +
     `Rights: ${linkedFile.rights}\n`;

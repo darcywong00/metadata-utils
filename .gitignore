@@ -4,12 +4,11 @@ node_modules/
 # Sample files for testing
 samples/
 
+# JSON objects
+*.json
+
 # Compiled Output files
 dist/
 
 # Published artifacts
 deploy/
-log.json
-
-# Output
-*.SFM

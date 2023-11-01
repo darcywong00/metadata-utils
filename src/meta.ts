@@ -67,7 +67,6 @@ export async function getTags(files: string[]) : Promise<linkedFileType[]> {
  * @param newTags {string} - JSON Object of metadata tags
  */
 export async function writeImageTags(files: string[], newTags: any) {
-  //const tags2 = parseJSON(newTags) as any;
   const fileTags = await getTags(files);
 
   fileTags.forEach((currentTags, index) => {

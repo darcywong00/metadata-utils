@@ -2,13 +2,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Copyright 2023 SIL International
 import chalk from 'chalk';
-import { CommanderError, program } from 'commander';
-import {exiftool, parseJSON, Tags} from 'exiftool-vendored';
+import {CommanderError, program} from 'commander';
+import {exiftool, parseJSON} from 'exiftool-vendored';
 import * as fs from 'fs';
 import {glob} from 'glob';
 import * as meta from './meta.js';
 import require from './cjs-require.js';
-import path from 'path';
 import promptSync from 'prompt-sync';
 
 //import {version} from '../package.json';
@@ -46,8 +45,8 @@ validateParameters(options);
 function validateParameters(options) {
   if (debugMode) {
     console.log('Parameters:');
-    if (options.file) {
-      console.log(`Image file path: "${options.file}"`);
+    if (options.files) {
+      console.log(`Image file path: "${options.files}"`);
     }
     if (options.json) {
       console.log(`Tag info: "${options.json}"`);
@@ -77,13 +76,14 @@ function validateParameters(options) {
     });
   }
 
-  if (options.json && !fs.existsSync(options.json)) {
-    console.error(`Can't open JSON file ${options.json}. Exiting`);
+  if (options.projectPath && !fs.existsSync(options.projectPath)) {
+    console.error(`Can't open project directory ${options.projectPath}. Exiting`);
     process.exit(1);
   }
 
-  if (options.projectPath && !fs.existsSync(options.projectPath)) {
-    console.error(`Can't open project directory ${options.projectPath}. Exiting`);
+  // Check if JSON file exists
+  if (options.json && !fs.existsSync(options.json)) {
+    console.error(`Can't open JSON file ${options.json}. Exiting`);
     process.exit(1);
   }
 
@@ -104,47 +104,42 @@ function validateParameters(options) {
 // Routing commands to functions
 ////////////////////////////////////////////////////////////////////
 let linkedFiles: meta.linkedFileType[] = [];
+
+// Determine files to process
+let files;
+if (options.files) {
+  files = options.files;
+  console.log(`Processing files: ${files}`);
+} else {
+  // Read/Write tags for all the images in a project (Do we limit to LinkedFiles/Pictures?)
+  const projectPath = options.projectPath ? options.projectPath : process.cwd();
+  files = glob.sync(projectPath + '/**/*.{jpg,JPG,png,PNG}');
+  console.log(`Processing files in project ${projectPath}`);
+}
+
 let newTags;
 if (options.tags || options.json) {
   newTags = (options.tags) ? parseJSON(options.tags) as any : require(options.json);
 }
 
-if (options.files) {
-  // Overwrite metadata tags
-  if (newTags) {
-    await meta.writeImageTags(options.files, newTags);
+// Overwrite metadata tags
+if (newTags) {
+
+  // Confirm if user wants to modify metadata for all the files in the project.
+  console.log(`New tags to write are: ` +
+    JSON.stringify(newTags, (k, v) => v === undefined ? null : v, 2));
+  const prompt = promptSync();
+  let confirmation = prompt("Are you sure you want to modify the metadata for all the images in the project? (y/n) ");
+  confirmation = String(confirmation);
+  if (confirmation.toLowerCase() === 'n') {
+    process.exit(1);
   }
 
-  // Read tags
-  linkedFiles = await meta.getTags(options.files);
-
-} else {
-  const projectPath = options.projectPath ? options.projectPath : process.cwd();
-  console.log(`searching for images in project ${projectPath}`);
-
-  // Read/Write tags for all the images in a project (Do we limit to LinkedFiles/Pictures?)
-  const files = glob.sync(projectPath + '/**/*.{jpg,JPG,png,PNG}');
-
-  if (newTags) {
-    // Confirm if user wants to modify metadata for all the files in the project.
-    console.log(`New tags to write are: ` +
-      JSON.stringify(newTags, (k, v) => v === undefined ? null : v, 2));
-    const prompt = promptSync();
-    let confirmation = prompt("Are you sure you want to modify the metadata for all the images in the project? (y/n) ");
-    confirmation = String(confirmation);
-    if (confirmation.toLowerCase() === 'n') {
-      process.exit(1);
-    }
-
-    // Write tags
-    console.log(`Writing tag info: ${options.tags}`);
-    await meta.writeImageTags(files, newTags);
-
-  }
-
-  // Read tags
-  linkedFiles = await meta.getTags(files);
+  await meta.writeImageTags(files, newTags);
 }
+
+// Read tags
+linkedFiles = await meta.getTags(files);
 
 // Generate summary
 console.log(chalk.blue('\n------------------------'));

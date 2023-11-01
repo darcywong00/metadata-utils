@@ -66,7 +66,7 @@ function validateParameters(options) {
 
     options.files.forEach(file => {
       if (!fs.existsSync(file)) {
-        console.error(`${file} does not exist`);
+        console.error(`${file} does not exist. Exiting`);
         process.exit(1);
       }
     });
@@ -76,6 +76,11 @@ function validateParameters(options) {
     console.error(`Can't open project directory ${options.projectPath}. Exiting`);
     process.exit(1);
   }
+
+  // Require files or projectPath parameter
+  if (!options.files && !options.projectPath) {
+    console.error(`--files or --projectPath parameter required. Exiting`);
+    process.exit(1);
 }
 
 ////////////////////////////////////////////////////////////////////

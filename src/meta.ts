@@ -26,6 +26,14 @@ chalk.level = 1; // Use colors in the VS Code Debug Window
 // Utilities to read and write metadata tags from an image file.
 // Currently, we are interested in {Creator, License, Rights}
 
+export function getTags(files: string[]) : Array<Promise<any>> {
+  const promises : Array<Promise<any>> = [];
+  files.forEach((file) => {
+    promises.push(exiftool.readRaw(file, ['all', '-xmp:all']));
+  });
+  return promises;
+}
+
 /**
  * Read the XMP metadata tags to get licensing info from an image file
  * @param file {string} - path to image file

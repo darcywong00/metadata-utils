@@ -3,7 +3,7 @@
 // Copyright 2023 SIL International
 import chalk from 'chalk';
 import { CommanderError, program } from 'commander';
-import {exiftool, Tags} from 'exiftool-vendored';
+import {exiftool, parseJSON, Tags} from 'exiftool-vendored';
 import * as fs from 'fs';
 import {glob} from 'glob';
 import * as meta from './meta.js';
@@ -84,6 +84,23 @@ function validateParameters(options) {
 let linkedFiles: meta.linkedFileType[] = [];
 
 if (options.files) {
+  const allTags = await Promise.all(meta.getTags(options.files));
+  allTags.forEach(rawTags => {
+    const str: string = JSON.stringify(rawTags);
+    const tags: any = parseJSON(str) as any;
+    linkedFiles.push({
+      fileName: path.basename(tags.SourceFile),
+      fileType: "image",
+
+      sourceFile: tags.SourceFile,
+      creator: tags.Creator,
+      license: tags.License,
+      rights: tags.Rights,
+
+      tags: tags
+    })
+  })
+  /*
   for (const file of options.files) {
     if (options.tags) {
       // Write tags
@@ -107,6 +124,8 @@ if (options.files) {
       tags: tags
     });
   }
+  */
+
 } else {
   const projectPath = options.projectPath ? options.projectPath : process.cwd();
   console.log(`searching for images in project ${projectPath}`);

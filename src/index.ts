@@ -100,34 +100,91 @@ function validateParameters(options) {
   }
 }
 
+/**
+ * Determine list of files to process
+ * @param options parameters. Either list of files, or path to a project
+ * @returns string[]
+ */
+function determineFiles(options: any) : string[] {
+  let files;
+  if (options.files) {
+    files = options.files;
+    console.log(chalk.blue(`Processing files: ${files}`));
+  } else {
+    // Read/Write tags for all the images in a project (Do we limit to LinkedFiles/Pictures?)
+    const projectPath = options.projectPath ? options.projectPath : process.cwd();
+    files = glob.sync(projectPath + '/**/*.{jpg,JPG,png,PNG}');
+    console.log(chalk.blue(`Processing files in project ${projectPath}`));
+  }
+
+  return files;
+}
+
+/**
+ * Determine new metadata tags that will be written
+ * @param options parameters of tags as string or JSON object
+ * @returns tags as Object
+ */
+function determineNewTags(options: any) : Object {
+  let newTags;
+  if (options.tags || options.json) {
+    try {
+      newTags = (options.tags) ? parseJSON(options.tags) as any : require(options.json);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error(error.message);
+      }
+      process.exit(1);
+    }
+  }
+  return newTags;
+}
+
+/**
+ * Print summary of metadata info
+ * @param linkedFiles list of metadata info
+ */
+function printSummary(linkedFiles: meta.linkedFileType[]) {
+  console.log(chalk.blue('\n------------------------'));
+  console.log(chalk.blue('Licensing Info Summary:'));
+  linkedFiles.forEach(linkedFile => {
+    const tagInfo = `${linkedFile.fileType} file ${linkedFile.fileName} has\n\t` +
+      `Source File: ${linkedFile.sourceFile}\n\t` +
+      `File Type: ${linkedFile.fileType}\n\t` +
+      `Creator: ${linkedFile.creator}\n\t` +
+      `License: ${linkedFile.license}\n\t` +
+      `Rights: ${linkedFile.rights}\n`;
+    if (!linkedFile.license) {
+      console.log(chalk.red(tagInfo));
+    } else {
+      console.log(chalk.green(tagInfo));
+    }
+
+  })
+}
+
+/**
+ * Pretty-print JSON object to string. undefined fields treated as null .
+ * @param json {Object}
+ */
+function prettyPrint(json: Object) : string {
+  return JSON.stringify(json, (k, v) => v === undefined ? null : v, 2);
+}
+
 ////////////////////////////////////////////////////////////////////
 // Routing commands to functions
 ////////////////////////////////////////////////////////////////////
 let linkedFiles: meta.linkedFileType[] = [];
 
-// Determine files to process
-let files;
-if (options.files) {
-  files = options.files;
-  console.log(`Processing files: ${files}`);
-} else {
-  // Read/Write tags for all the images in a project (Do we limit to LinkedFiles/Pictures?)
-  const projectPath = options.projectPath ? options.projectPath : process.cwd();
-  files = glob.sync(projectPath + '/**/*.{jpg,JPG,png,PNG}');
-  console.log(`Processing files in project ${projectPath}`);
-}
-
-let newTags;
-if (options.tags || options.json) {
-  newTags = (options.tags) ? parseJSON(options.tags) as any : require(options.json);
-}
+// Determine files and tags to process
+let files = determineFiles(options);
+let newTags = determineNewTags(options);
 
 // Overwrite metadata tags
 if (newTags) {
 
   // Confirm if user wants to modify metadata for all the files in the project.
-  console.log(`New tags to write are: ` +
-    JSON.stringify(newTags, (k, v) => v === undefined ? null : v, 2));
+  console.log(chalk.yellow(`New tags to write are: ${prettyPrint(newTags)}`));
   const prompt = promptSync();
   let confirmation = prompt("Are you sure you want to modify the metadata for all the images in the project? (y/n) ");
   confirmation = String(confirmation);
@@ -142,27 +199,11 @@ if (newTags) {
 linkedFiles = await meta.getTags(files);
 
 // Generate summary
-console.log(chalk.blue('\n------------------------'));
-console.log(chalk.blue('Licensing Info Summary:'));
-linkedFiles.forEach(linkedFile => {
-  const tagInfo = `${linkedFile.fileType} file ${linkedFile.fileName} has\n\t` +
-    `Source File: ${linkedFile.sourceFile}\n\t` +
-    `File Type: ${linkedFile.fileType}\n\t` +
-    `Creator: ${linkedFile.creator}\n\t` +
-    `License: ${linkedFile.license}\n\t` +
-    `Rights: ${linkedFile.rights}\n`;
-  if (!linkedFile.license) {
-    console.log(chalk.red(tagInfo));
-  } else {
-    console.log(chalk.green(tagInfo));
-  }
-
-})
+printSummary(linkedFiles);
 
 // Write summary to file. Preserve undefined properties as null, and pretty-print with 2 spaces
 const filename = 'log.json';
-fs.writeFileSync('./' + filename,
-  JSON.stringify(linkedFiles, (k, v) => v === undefined ? null : v, 2));
+fs.writeFileSync('./' + filename, prettyPrint(linkedFiles));
 console.log(`metadata log written to ${filename}`);
 
 console.log('All done processing');
@@ -170,4 +211,5 @@ console.log('All done processing');
 // Processor functions
 ////////////////////////////////////////////////////////////////////
 
+// Cleanup
 exiftool.end();

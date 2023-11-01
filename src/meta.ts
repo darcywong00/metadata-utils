@@ -1,14 +1,17 @@
 import chalk from 'chalk';
-import { exiftool, parseJSON, Tags} from 'exiftool-vendored';
+import { exiftool, parseJSON, Tags, WriteTags } from 'exiftool-vendored';
 import path from 'path';
 
 // Utilities to read and write metadata tags from an image file.
-// Currently, we are interested in {Creator, License, Rights}
+// Currently, we are interested in {creator, license, rights}
 
 export default {getTags, writeImageTags};
 
 export type fileType =
   "audio" | "image";
+
+// Default creative commons license
+export const DEFAULT_LICENSE_CC_BY_NC_SA = "https://creativecommons.org/licenses/by-nc-sa/4.0/";
 
 export interface linkedFileType {
   fileName: string;
@@ -22,6 +25,13 @@ export interface linkedFileType {
 
   // All the tags
   tags?: Tags;
+}
+
+// The fields of the XMP metadata tag we care about
+export interface xmpTagType {
+  'XMP:Creator'? : string;
+  'XMP:License'? : string;
+  'XMP:Rights'? : string;
 }
 
 chalk.level = 1; // Use colors in the VS Code Debug Window
@@ -51,7 +61,8 @@ export async function getTags(files: string[]) : Promise<linkedFileType[]> {
       license: tags.License,
       rights: tags.Rights,
 
-      tags: tags
+      // Uncomment if we want more metadata tags
+      //tags: tags
     });
   });
 
@@ -64,57 +75,58 @@ export async function getTags(files: string[]) : Promise<linkedFileType[]> {
  * Get the current metadata tags from a list of image files. Then update
  * the tags we care about
  * @param files {string[]} - path to image files
- * @param newTags {string} - JSON Object of metadata tags
+ * @param newTags {Object} - JSON Object of metadata tags
  */
 export async function writeImageTags(files: string[], newTags: any) {
   const fileTags = await getTags(files);
+  const promises : Array<Promise<any>> = [];
 
   fileTags.forEach((currentTags, index) => {
-    // Update Creator info
-    if (newTags.hasOwnProperty('Creator')) {
-      if (currentTags.creator != newTags.Creator) {
-        const warning = `WARNING: Overwriting ${path.basename(currentTags.fileName)} existing creator: ${currentTags.creator} with ${newTags.Creator}`;
+    const tagToWrite : xmpTagType = {};
+    // Update creator info
+    if (newTags.hasOwnProperty('creator')) {
+      if (currentTags.creator != newTags.creator) {
+        const warning = `WARNING: Overwriting ${path.basename(currentTags.fileName)} ` +
+          `existing creator: ${currentTags.creator} with ${newTags.creator}`;
         console.log(chalk.red(warning));
       }
 
-      try {
-        exiftool.write(files[index],
-          {'XMP:Creator': newTags.Creator},
-          ['-overwrite_original']);
-      } catch (err: any) {
-        console.error("ERROR:", err.message);
-      }
+      tagToWrite['XMP:Creator'] = newTags.creator;
     }
 
     // Update License info
-    if (newTags.hasOwnProperty('License')) {
-      if (currentTags.license != newTags.License) {
-        const warning = `WARNING: Overwriting ${path.basename(currentTags.fileName)} existing license: ${currentTags.license} with ${newTags.License}`;
+    if (newTags.hasOwnProperty('license')) {
+      if (currentTags.license != newTags.license) {
+        const warning = `WARNING: Overwriting ${path.basename(currentTags.fileName)} ` +
+          `existing license: ${currentTags.license} with ${newTags.license}`;
         console.log(chalk.red(warning));
       }
 
-      try {
-        exiftool.write(files[index],
-          {'XMP:License': newTags.License},
-          ['-overwrite_original']);
-      } catch (err: any) {
-        console.error("ERROR:", err.message);
-      }
+      tagToWrite['XMP:License'] = newTags.license;
     }
 
     // Update Rights info
-    if (newTags.hasOwnProperty('Rights')) {
-      if (currentTags.rights != newTags.Rights) {
-        const warning = `WARNING: Overwriting ${path.basename(currentTags.fileName)} existing rights: ${currentTags.rights} with ${newTags.Rights}`;
+    if (newTags.hasOwnProperty('rights')) {
+      if (currentTags.rights != newTags.rights) {
+        const warning = `WARNING: Overwriting ${path.basename(currentTags.fileName)} ` +
+          `existing rights: ${currentTags.rights} with ${newTags.rights}`;
         console.log(chalk.red(warning));
       }
 
-      try {
+      tagToWrite['XMP:Rights'] = newTags.rights;
+    }
+
+    // If tagToWrite has content, add it to the promises to write
+    if (Object.keys(tagToWrite).length != 0) {
+      promises.push(
         exiftool.write(files[index],
-          {'XMP:Rights': newTags.Rights});
-      } catch (err: any) {
-        console.error("ERROR:", err.message);
-      }
+          tagToWrite as WriteTags,
+          ['-overwrite_original']));
     }
   });
+
+  await Promise.all(promises)
+   .catch((error) => {
+    console.error(error.message);
+   });
 }

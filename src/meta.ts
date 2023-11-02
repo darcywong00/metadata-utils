@@ -39,21 +39,22 @@ chalk.level = 1; // Use colors in the VS Code Debug Window
 /**
  * Retrieve the metadata tags from a list of files
  * @param files {string[]} - Path to image files
- * @returns - Array of linkedFileType
+ * @returns - Map of file id to linkedFileType
  */
-export async function getTags(files: string[]) : Promise<linkedFileType[]> {
+export async function getTags(files: string[]) : Promise<Map<string, linkedFileType>> {
   const promises : Array<Promise<any>> = [];
   files.forEach((file) => {
     promises.push(exiftool.readRaw(file, ['all', '-xmp:all']));
   });
 
-  let linkedFiles: linkedFileType[] = [];
+  let linkedFiles = new Map();
   const allTags = await Promise.all(promises);
   allTags.forEach(rawTags => {
     const str: string = JSON.stringify(rawTags);
     const tags: any = parseJSON(str) as any;
-    linkedFiles.push({
-      fileName: path.basename(tags.SourceFile),
+    const id = path.basename(tags.SourceFile);
+    linkedFiles.set(id, {
+      fileName: id,
       fileType: "image",
 
       sourceFile: tags.SourceFile,
@@ -81,7 +82,7 @@ export async function writeImageTags(files: string[], newTags: any) {
   const fileTags = await getTags(files);
   const promises : Array<Promise<any>> = [];
 
-  fileTags.forEach((currentTags, index) => {
+  fileTags.forEach((currentTags, id) => {
     const tagToWrite : xmpTagType = {};
     // Update creator info
     if (newTags.hasOwnProperty('creator')) {
@@ -119,7 +120,7 @@ export async function writeImageTags(files: string[], newTags: any) {
     // If tagToWrite has content, add it to the promises to write
     if (Object.keys(tagToWrite).length != 0) {
       promises.push(
-        exiftool.write(files[index],
+        exiftool.write(currentTags.sourceFile as string, //files[index],
           tagToWrite as WriteTags,
           ['-overwrite_original']));
     }
